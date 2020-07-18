@@ -8,28 +8,28 @@ use serde::{Deserialize, Serialize};
 
 pub extern crate fst;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Dict {
     pub keys: Map<Vec<u8>>,
     pub fields: Vec<Vec<Field>>,
 }
-#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize, Clone)]
 pub struct Field {
     pub ident: Option<String>,
     pub explanation: Explanation,
     pub examples: Vec<Example>,
 }
-#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize, Clone)]
 pub struct Explanation {
     pub body: String,
     pub complements: Vec<Complement>,
 }
-#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize, Clone)]
 pub struct Example {
     pub sentence: String,
     pub complements: Vec<Complement>,
 }
-#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize, Clone)]
 pub struct Complement {
     pub body: String,
 }
