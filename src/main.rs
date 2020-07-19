@@ -117,6 +117,7 @@ fn gui_frontend(dict: Dict) {
 
             (word_list_store, word_column_id)
         };
+        word_list.set_activate_on_single_click(true);
 
         let word_entry = builder
             .get_object::<Entry>("word_entry")
@@ -129,28 +130,58 @@ fn gui_frontend(dict: Dict) {
         {
             let dict = dict.clone();
             word_entry.connect_key_release_event(move |word_entry, key_event| {
-                /* Escape */
-                if key_event.get_hardware_keycode() == 9 {
-                    gtk::main_quit();
-                } else {
-                    let query = word_entry.get_buffer().get_text();
-                    let matcher = fst::automaton::Levenshtein::new(&query, 0).unwrap();
-                    let mut stream = dict.keys.search(&matcher).into_stream();
+                let query = word_entry.get_buffer().get_text();
+                let matcher = fst::automaton::Levenshtein::new(&query, 1).unwrap();
+                let mut stream = dict.keys.search(&matcher).into_stream();
 
-                    word_list_store.clear();
-                    word_desc.get_buffer().unwrap().set_text(&"");
+                word_list_store.clear();
+                word_desc.get_buffer().unwrap().set_text(&"");
 
-                    while let Some((k, idx)) = stream.next() {
-                        let item = std::str::from_utf8(k).unwrap();
-                        append_word(item, &word_list_store, word_column_id);
-                        let mut desc = "".to_string();
-                        for f in &dict.fields[idx as usize] {
-                            desc += &printer(item, f);
-                            desc += "\n";
-                        }
-                        word_desc.get_buffer().unwrap().set_text(&desc);
+                let mut word_descs = vec![];
+                while let Some((k, idx)) = stream.next() {
+                    let item = std::str::from_utf8(k).unwrap();
+                    let mut desc = "".to_string();
+                    for f in &dict.fields[idx as usize] {
+                        desc += &printer(item, f);
+                        desc += "\n";
+                    }
+                    word_descs.push((String::from(item), desc));
+                }
+
+                let mut prefix_ok = vec![];
+                let mut prefix_ng = vec![];
+
+                for (word, desc) in word_descs.iter() {
+                    let tp = (word.clone(), desc.clone());
+                    if word.starts_with(&query) {
+                        prefix_ok.push(tp);
+                    } else {
+                        prefix_ng.push(tp);
                     }
                 }
+
+                prefix_ok.append(&mut prefix_ng);
+
+                let mut words = vec![];
+                let mut descs = vec![];
+                for (word, desc) in prefix_ok {
+                    append_word(&word, &word_list_store, word_column_id);
+                    words.push(word);
+                    descs.push(desc);
+                }
+
+                word_desc.get_buffer().unwrap().set_text(&descs[0]);
+
+                let descs = descs.clone();
+                let word_desc = word_desc.clone();
+                word_list.connect_row_activated(move |_, tp, _| {
+                    let idx = tp.get_indices()[0];
+                    word_desc
+                        .get_buffer()
+                        .unwrap()
+                        .set_text(&descs[idx as usize]);
+                });
+
                 Inhibit(false)
             });
         }
