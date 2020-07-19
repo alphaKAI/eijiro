@@ -170,16 +170,20 @@ fn gui_frontend(dict: Dict) {
                     descs.push(desc);
                 }
 
-                word_desc.get_buffer().unwrap().set_text(&descs[0]);
+                if descs.len() > 0 {
+                    word_desc.get_buffer().unwrap().set_text(&descs[0]);
+                }
 
                 let descs = descs.clone();
                 let word_desc = word_desc.clone();
                 word_list.connect_row_activated(move |_, tp, _| {
-                    let idx = tp.get_indices()[0];
-                    word_desc
-                        .get_buffer()
-                        .unwrap()
-                        .set_text(&descs[idx as usize]);
+                    let empty = "".to_string();
+                    let text = match tp.get_indices().iter().nth(0) {
+                        Some(idx) => &descs[*idx as usize],
+                        None => &empty,
+                    };
+
+                    word_desc.get_buffer().unwrap().set_text(text);
                 });
 
                 Inhibit(false)
