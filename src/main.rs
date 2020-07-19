@@ -2,6 +2,7 @@ use anyhow::{anyhow, ensure, Result};
 use clap::{App, Arg, ArgMatches, SubCommand};
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
 use eijiro_parser::{fst, Dict};
 use fst::{IntoStreamer, Streamer};
@@ -76,6 +77,7 @@ fn gui_frontend(dict: Dict) {
     let app = Application::new(Some("info.alpha-kai-net.eijiro"), Default::default())
         .expect("Failed to initialize GTK application");
     //let glade_file_path = "eijiro.glade";
+    let dict = Rc::new(dict);
     app.connect_activate(move |app| {
         let builder = Builder::from_string(include_str!("../eijiro.glade"));
         let window = builder
@@ -90,7 +92,7 @@ fn gui_frontend(dict: Dict) {
             word_list_store.set_value(&iter, word_column_id, &word.to_value() as &Value);
         }
         // Setup word_list
-        let (word_list_store, word_column_id) = (|| {
+        let (word_list_store, word_column_id) = {
             let word_list = builder
                 .get_object::<TreeView>("word_list")
                 .expect("Failed to get handle of word_list");
@@ -112,7 +114,7 @@ fn gui_frontend(dict: Dict) {
             word_list.set_model(Some(&word_list_store));
 
             (word_list_store, word_column_id)
-        })();
+        };
 
         let word_entry = builder
             .get_object::<Entry>("word_entry")
@@ -122,28 +124,30 @@ fn gui_frontend(dict: Dict) {
             .get_object::<TextView>("word_desc")
             .expect("Failed to get handle of word_desc");
 
-        (|dict: Dict, word_list_store: ListStore| {
-            word_entry.connect_key_release_event(move |word_entry, _| {
-                let query = word_entry.get_buffer().get_text();
-                let matcher = fst::automaton::Levenshtein::new(&query, 0).unwrap();
-                let mut stream = dict.keys.search(&matcher).into_stream();
+        {
+            let dict = dict.clone();
+            word_entry
+                .connect_key_release_event(move |word_entry, _| {
+                    let query = word_entry.get_buffer().get_text();
+                    let matcher = fst::automaton::Levenshtein::new(&query, 0).unwrap();
+                    let mut stream = dict.keys.search(&matcher).into_stream();
 
-                word_list_store.clear();
-                word_desc.get_buffer().unwrap().set_text(&"");
+                    word_list_store.clear();
+                    word_desc.get_buffer().unwrap().set_text(&"");
 
-                while let Some((k, idx)) = stream.next() {
-                    let item = std::str::from_utf8(k).unwrap();
-                    append_word(item, &word_list_store, word_column_id);
-                    let mut desc = "".to_string();
-                    for f in &dict.fields[idx as usize] {
-                        desc += &printer(item, f);
-                        desc += "\n";
+                    while let Some((k, idx)) = stream.next() {
+                        let item = std::str::from_utf8(k).unwrap();
+                        append_word(item, &word_list_store, word_column_id);
+                        let mut desc = "".to_string();
+                        for f in &dict.fields[idx as usize] {
+                            desc += &printer(item, f);
+                            desc += "\n";
+                        }
+                        word_desc.get_buffer().unwrap().set_text(&desc);
                     }
-                    word_desc.get_buffer().unwrap().set_text(&desc);
-                }
-                Inhibit(false)
-            });
-        })(dict.clone(), word_list_store.clone());
+                    Inhibit(false)
+                });
+        }
 
         window.show_all();
     });
