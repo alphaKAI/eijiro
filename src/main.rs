@@ -87,15 +87,17 @@ fn gui_frontend(dict: Dict) {
             gtk::main_quit();
             Inhibit(false)
         });
+
         fn append_word(word: &str, word_list_store: &ListStore, word_column_id: u32) {
             let iter = word_list_store.insert(-1);
             word_list_store.set_value(&iter, word_column_id, &word.to_value() as &Value);
         }
+
         // Setup word_list
+        let word_list = builder
+            .get_object::<TreeView>("word_list")
+            .expect("Failed to get handle of word_list");
         let (word_list_store, word_column_id) = {
-            let word_list = builder
-                .get_object::<TreeView>("word_list")
-                .expect("Failed to get handle of word_list");
             // Setup TreeView
             // TreeView Element Types
             let column_types = [Type::String];
@@ -126,8 +128,11 @@ fn gui_frontend(dict: Dict) {
 
         {
             let dict = dict.clone();
-            word_entry
-                .connect_key_release_event(move |word_entry, _| {
+            word_entry.connect_key_release_event(move |word_entry, key_event| {
+                /* Escape */
+                if key_event.get_hardware_keycode() == 9 {
+                    gtk::main_quit();
+                } else {
                     let query = word_entry.get_buffer().get_text();
                     let matcher = fst::automaton::Levenshtein::new(&query, 0).unwrap();
                     let mut stream = dict.keys.search(&matcher).into_stream();
@@ -145,8 +150,9 @@ fn gui_frontend(dict: Dict) {
                         }
                         word_desc.get_buffer().unwrap().set_text(&desc);
                     }
-                    Inhibit(false)
-                });
+                }
+                Inhibit(false)
+            });
         }
 
         window.show_all();
