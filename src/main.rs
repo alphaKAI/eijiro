@@ -137,6 +137,10 @@ fn gui_frontend(dict: Dict) {
                 word_list_store.clear();
                 word_desc.get_buffer().unwrap().set_text(&"");
 
+                if query == "" {
+                    return Inhibit(false);
+                }
+
                 let mut word_descs = vec![];
                 while let Some((k, idx)) = stream.next() {
                     let item = std::str::from_utf8(k).unwrap();
