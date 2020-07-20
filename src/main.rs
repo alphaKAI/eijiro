@@ -130,16 +130,17 @@ fn gui_frontend(dict: Dict) {
         {
             let dict = dict.clone();
             word_entry.connect_key_release_event(move |word_entry, key_event| {
-                let query = word_entry.get_buffer().get_text();
-                let matcher = fst::automaton::Levenshtein::new(&query, 1).unwrap();
-                let mut stream = dict.keys.search(&matcher).into_stream();
-
                 word_list_store.clear();
                 word_desc.get_buffer().unwrap().set_text(&"");
 
+                let query = word_entry.get_buffer().get_text();
                 if query == "" {
+                    // nothing to do
                     return Inhibit(false);
                 }
+
+                let matcher = fst::automaton::Levenshtein::new(&query, 1).unwrap();
+                let mut stream = dict.keys.search(&matcher).into_stream();
 
                 let mut word_descs = vec![];
                 while let Some((k, idx)) = stream.next() {
